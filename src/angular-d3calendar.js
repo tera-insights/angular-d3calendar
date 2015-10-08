@@ -60,7 +60,9 @@
 
                         // 4 - Label the years.
                         svg.append("text")
-                            .attr("transform", "translate(-6," + cellSize * 3.5 + ")rotate(-90)")
+                            .attr("x", -15)
+                            .attr("y", 10)
+                            .attr("transform", "rotate(-90)")
                             .style("text-anchor", "middle")
                             .text(function(d) {
                                 return d;
@@ -99,7 +101,7 @@
                         var days = d3.nest()
                             .key(dayAccessor)
                             .rollup(function(d) {
-                                // Color determined by the event.
+                                // Determine color by event.
                                 var c = "white";
                                 var e = eventAccessor(d[0]);
 
