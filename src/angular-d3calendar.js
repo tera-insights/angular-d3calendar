@@ -19,18 +19,21 @@
                         data: '=', // the data to display. Must be an array of objects 
                         "date-accessor": '&', // function to extract the date, defaults to function(el){ return el.date; }
                         "color-accessor": '&', // function to extract the color [required]
+                        "event-accessor": '&',
                     },
                     link: function(scope, element, attrs) {
+
                         var cellSize = (scope["cell-size"] >= 0) ? scope["cell-size"] : 17;
                         var width = (53 + 4) * cellSize; // 2 cell margin on either size
                         var height = (7 + 2) * cellSize;
-                        var dateAccessor = scope.dateAccessor ? scope.dateAccessor : function(el) {
-                            return el.date;
-                        };
+
+                        var dateAccessor = scope.dateAccessor ? scope.dateAccessor : function(el){ return el.date; };
                         var colorAccessor = scope.colorAccessor ? scope.colorAccessor : function(el){ return el.color; };
+                        var eventAccessor = scope.eventAccessor ? scope.eventAccessor : function(el){ return el.events; };
+
                         var data = scope.data;
 
-                        // 1. Scan the data to determine the year range
+                        // 1 - Scan the data to determine the year range.
                         var yearRange = d3.range(
                             d3.min(data.map(function(d) {
                                 return dateAccessor(d).getFullYear();
@@ -40,9 +43,12 @@
                             }))
                         );
 
+                        // 2 - Format the dates.
                         var percent = d3.format(".1%"),
                             format = d3.time.format("%Y-%m-%d");
+                        var dayAccessor = function(d) { return format(d3.time.day(dateAccessor(d))); };
 
+                        // 3 - Append a separate SVG for each year.
                         var svg = d3.select(element[0]).selectAll("svg")
                             .data(yearRange)
                             .enter().append("svg")
@@ -52,6 +58,7 @@
                             .append("g")
                             .attr("transform", "translate(" + ((width - scope.cellSize * 53) / 2) + "," + (height - scope.cellSize * 7 - 1) + ")");
 
+                        // 4 - Label the years.
                         svg.append("text")
                             .attr("transform", "translate(-6," + cellSize * 3.5 + ")rotate(-90)")
                             .style("text-anchor", "middle")
@@ -59,6 +66,7 @@
                                 return d;
                             });
 
+                        // 5 - Draw the individual day cells.
                         var rect = svg.selectAll(".day")
                             .data(function(d) {
                                 return d3.time.days(new Date(d, 0, 1), new Date(d + 1, 0, 1));
@@ -75,11 +83,10 @@
                             })
                             .datum(format);
 
-                        rect.append("title")
-                            .text(function(d) {
-                                return d;
-                            });
+                        // 6 - Create a tooltip for each day.
+                        rect.append("title");
 
+                        // 7 - Outline the months.
                         svg.selectAll(".month")
                             .data(function(d) {
                                 return d3.time.months(new Date(d, 0, 1), new Date(d + 1, 0, 1));
@@ -88,27 +95,35 @@
                             .attr("class", "month")
                             .attr("d", monthPath);
 
+                        // 8 - Group days.
                         var days = d3.nest()
-                            .key(dateAccessor)
+                            .key(dayAccessor)
                             .rollup(function(d) {
-                                // group color is the color of the first element
-                                var day = {
-                                    v: dateAccessor(d[0]),
-                                    c: colorAccessor(d[0])
-                                };
-                                return day;
+                                // Color determined by the event.
+                                var c = "white";
+                                var e = eventAccessor(d[0]);
+
+                                if(e == "Edited file.")
+                                    c = "blue";
+                                else if(e == "Pushed project.")
+                                    c = "orange";
+                                else if(e == "Updated wiki.")
+                                    c = "green";
+
+                                return {
+                                    c: c,
+                                    e: e
+                                }
                             })
                             .map(data);
 
-                        rect.filter(function(d) {
-                            return d in days;
-                        })
-                            .attr("class", function(d) {
-                                return d.c;
+                        rect.filter(function(d) { return d in days; })
+                            .style("fill", function(d) {
+                                return days[d].c;
                             })
                             .select("title")
                             .text(function(d) {
-                                return d + ": " + percent(data[d]);
+                                return d + '\n' + days[d].e;
                             });
 
                         function monthPath(t0) {

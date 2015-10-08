@@ -32,13 +32,21 @@
 				// cook up some data
 				$scope.data = d3.time.day.range(new Date(2000, 0, 1), new Date(2016, 0, 1))
 					.map(function(day){
+						var events = [
+							"Edited file.",
+							"Pushed project.",
+							"Updated wiki."
+						];
+
 						return { 
 							date: day,
-							color: "red"
+							color: "green",
+							events: events[parseInt(Math.random() * 3)]
 						};
 					});
 				$scope.dateAccessor = function(el){ return el.date; };
-				$scope.colorAccessor = function(el){ return el.color; };	
+				$scope.colorAccessor = function(el){ return el.color; };
+				$scope.eventAccessor = function(el){ return el.events; };
 
 			}]);
 	</script>
