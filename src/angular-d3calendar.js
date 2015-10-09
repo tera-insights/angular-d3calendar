@@ -23,12 +23,16 @@
                     },
                     link: function(scope, element, attrs) {
 
-                        var cellSize = (scope["cell-size"] >= 0) ? scope["cell-size"] : 17;
-                        var width = (53 + 4) * cellSize; // 2 cell margin on either size
-                        var height = (7 + 2) * cellSize;
+                        var cellSize = (scope["cell-size"] >= 0) ? scope["cell-size"] : 23;
+                        var m = { // The horizontal and vertical margins (# of cells).
+                            hor: 4,
+                            ver: 2
+                        };
+                        var width = (54 + 2) * cellSize + 1;
+                        var height = (7) * cellSize;
 
                         var dateAccessor = scope.dateAccessor ? scope.dateAccessor : function(el){ return el.date; };
-                        var colorAccessor = scope.colorAccessor ? scope.colorAccessor : function(el){ return el.color; };
+                        var colorAccessor = scope.colorAccessor ? scope.colorAccessor : function(el){ return "white"; };
                         var eventAccessor = scope.eventAccessor ? scope.eventAccessor : function(el){ return el.events; };
 
                         var data = scope.data;
@@ -54,16 +58,23 @@
                             .enter().append("svg")
                             .attr("width", width)
                             .attr("height", height)
+                            .style("margin-top", (m.ver * cellSize) / 2)
+                            .style("margin-left", (m.hor * cellSize) / 2)
+                            .style("margin-bottom", (m.ver * cellSize) / 2)
+                            .style("margin-right", (m.hor * cellSize) / 2)
                             .attr("class", "RdYlGn")
                             .append("g")
-                            .attr("transform", "translate(" + ((width - scope.cellSize * 53) / 2) + "," + (height - scope.cellSize * 7 - 1) + ")");
+                            .attr("transform", "translate(" + ((width - scope.cellSize * 53) / 2) + "," +
+                                (height - scope.cellSize * 7 - 1) + ")");
 
                         // 4 - Label the years.
                         svg.append("text")
-                            .attr("x", -15)
-                            .attr("y", 10)
+                            .attr("text-anchor", "middle")
+                            .attr("dominant-baseline", "central")
                             .attr("transform", "rotate(-90)")
-                            .style("text-anchor", "middle")
+                            .attr("x", -height / 2)
+                            .attr("y", cellSize)
+                            .style("font-size", cellSize)
                             .text(function(d) {
                                 return d;
                             });
@@ -78,9 +89,11 @@
                             .attr("width", cellSize)
                             .attr("height", cellSize)
                             .attr("x", function(d) {
-                                return d3.time.weekOfYear(d) * cellSize;
+                                // Incorporates the horizontal margins.
+                                return (d3.time.weekOfYear(d) + 2) * cellSize;
                             })
                             .attr("y", function(d) {
+                                // Vertical margins already set between SVG's.
                                 return d.getDay() * cellSize;
                             })
                             .datum(format);
@@ -101,40 +114,44 @@
                         var days = d3.nest()
                             .key(dayAccessor)
                             .rollup(function(d) {
-                                // Determine color by event.
-                                var c = "white";
-                                var e = eventAccessor(d[0]);
-
-                                if(e == "Edited file.")
-                                    c = "blue";
-                                else if(e == "Pushed project.")
-                                    c = "orange";
-                                else if(e == "Updated wiki.")
-                                    c = "green";
-
                                 return {
-                                    c: c,
-                                    e: e
+                                    c: colorAccessor(d[0]),
+                                    e: eventAccessor(d[0])
                                 }
                             })
                             .map(data);
 
+                        // 9 - Color and label days based on events.
                         rect.filter(function(d) { return d in days; })
                             .style("fill", function(d) {
                                 return days[d].c;
                             })
                             .select("title")
                             .text(function(d) {
-                                return d + '\n' + days[d].e;
+                                var t = d;+ days[d].e;
+                                days[d].e.forEach(function(d) {
+                                    t += '\n' + d;
+                                });
+                                return t;
                             });
 
+                        // 10 - Outline the months.
                         function monthPath(t0) {
                             var t1 = new Date(t0.getFullYear(), t0.getMonth() + 1, 0),
                                 d0 = t0.getDay(),
                                 w0 = d3.time.weekOfYear(t0),
                                 d1 = t1.getDay(),
-                                w1 = d3.time.weekOfYear(t1);
-                            return "M" + (w0 + 1) * cellSize + "," + d0 * cellSize + "H" + w0 * cellSize + "V" + 7 * cellSize + "H" + w1 * cellSize + "V" + (d1 + 1) * cellSize + "H" + (w1 + 1) * cellSize + "V" + 0 + "H" + (w0 + 1) * cellSize + "Z";
+                                w1 = d3.time.weekOfYear(t1),
+                                sh = 2; // Horizontal shift (make room for year labels).
+                            return "M" + (w0 + 1 + sh) * cellSize + "," + d0 * cellSize +
+                                    "H" + (w0 + sh) * cellSize +
+                                    "V" + 7 * cellSize +
+                                    "H" + (w1 + sh) * cellSize +
+                                    "V" + (d1 + 1) * cellSize +
+                                    "H" + (w1 + 1 + sh) * cellSize +
+                                    "V" + 0 +
+                                    "H" + (w0 + 1 + sh) * cellSize +
+                                    "Z"; // End the path.
                         }
                     }
                 };
